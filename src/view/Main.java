@@ -33,7 +33,7 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.scene.input.TransferMode;
 
 @SuppressWarnings("restriction")
-public class Test extends Application {
+public class Main extends Application {
 
 	@Override
 	public void start(Stage primaryStage) throws Exception {
@@ -54,7 +54,7 @@ public class Test extends Application {
 		Label msg = new Label(
 				"Drag and drop your Word Document into this window or use the button to select its filepath.");
 		Label msg2 = new Label(
-				"A new document named \"Output\" will be created and placed where this tool is located.");
+				"A new document named \"Extracted Text\" will be created and placed where this tool is located.");
 		msg.setAlignment(Pos.CENTER);
 
 		HBox filepathBox = new HBox(10);
@@ -78,12 +78,14 @@ public class Test extends Application {
 		Button start = new Button("Start");
 		start.setPrefWidth(100);
 		start.setOnAction(e -> {
+			this.processDocuments(docField.getText());
 			completeLabel.setVisible(true);
 		});
 
 		Button reset = new Button("Reset");
 		reset.setPrefWidth(100);
 		reset.setOnAction(e -> {
+			docField.setText("");
 			completeLabel.setVisible(false);
 		});
 
@@ -119,6 +121,7 @@ public class Test extends Application {
 			if (event.getGestureSource() != box && event.getDragboard().hasFiles()) {
 				// Print files
 				event.getDragboard().getFiles().forEach(file -> docField.setText(file.getAbsolutePath()));
+				completeLabel.setVisible(false);
 				success = true;
 			}
 			event.setDropCompleted(success);
@@ -129,7 +132,7 @@ public class Test extends Application {
 
 		primaryStage.setScene(scene);
 		primaryStage.setTitle("Word Transfer Tool");
-		primaryStage.getScene().getRoot().setStyle("-fx-base:lavender");
+		primaryStage.getScene().getRoot().setStyle("-fx-base:gainsboro");
 		primaryStage.show();
 	}
 
@@ -169,22 +172,21 @@ public class Test extends Application {
 
 	}
 
-	private boolean processDocuments(String inputPath, String outputPath) {
+	private boolean processDocuments(String inputPath) {
 
-		if (inputPath == null || outputPath == null || inputPath.equals("") || outputPath.equals("")) {
-			invalidDocuments();
+		if (inputPath == null || inputPath.equals("") || !inputPath.contains(".doc") || !inputPath.contains(".docx")) {
+			Alerts.invalidDocuments();
 			return false;
 		}
 
-		if (!inputPath.contains(".doc") || !inputPath.contains(".docx") || !outputPath.contains(".doc")
-				|| !outputPath.contains(".docx")) {
-			invalidDocuments();
+		if (inputPath.equals(System.getProperty("user.dir") + "\\Extracted Text.docx")) {
+			Alerts.cannotExtractSelf();
 			return false;
 		}
 
 		try {
 			FileInputStream fis = new FileInputStream(inputPath);
-			FileOutputStream fos = new FileOutputStream(outputPath);
+			FileOutputStream fos = new FileOutputStream(System.getProperty("user.dir") + "\\Extracted Text.docx");
 			XWPFDocument inDoc = new XWPFDocument(OPCPackage.open(fis));
 
 			XWPFDocument outDoc = new XWPFDocument();
@@ -224,20 +226,35 @@ public class Test extends Application {
 			fis.close();
 			inDoc.close();
 		} catch (FileNotFoundException ex) {
+			System.out.println("The message is: " + ex.getMessage());
 			ex.printStackTrace();
 			if (ex.getMessage()
 					.contains("(The process cannot access the file because it is being used by another process)")) {
-				documentAlreadyOpened();
+				Alerts.documentAlreadyOpened();
+				return false;
+			}
+			
+			if (ex.getMessage().contains("(The system cannot find the file specified)")) {
+				Alerts.cannotFindFile();
+				return false;
+			}
+			
+			if (ex.getMessage().contains("(The system cannot find the path specified)")) {
+				Alerts.cannotFindFile();
 				return false;
 			}
 
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
+			if (e.getMessage().contains("(The system cannot find the file specified)")) {
+				Alerts.cannotFindFile();
+				return false;
+			}
 		} catch (InvalidFormatException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}
+			return false;
+		} 
 
 		return true;
 	}
@@ -295,7 +312,7 @@ public class Test extends Application {
 			ex.printStackTrace();
 			if (ex.getMessage()
 					.contains("(The process cannot access the file because it is being used by another process)")) {
-				documentAlreadyOpened();
+				Alerts.documentAlreadyOpened();
 				return false;
 			}
 
@@ -310,25 +327,6 @@ public class Test extends Application {
 		}
 
 		return true;
-	}
-
-	private void documentAlreadyOpened() {
-		Alert alert = new Alert(AlertType.INFORMATION,
-				"Output document needs to be closed before the tool can process both documents.", ButtonType.OK);
-		alert.setTitle("Output Document Open");
-		alert.setHeaderText("Output Document is Open");
-
-		alert.showAndWait();
-	}
-
-	private void invalidDocuments() {
-		Alert alert = new Alert(AlertType.INFORMATION,
-				"Please ensure that you have selected valid input/output documents", ButtonType.OK);
-		alert.setTitle("Invalid Documents");
-		alert.setHeaderText("Unable to Process Documents");
-
-		alert.showAndWait();
-
 	}
 
 	public static void main(String[] args) {
