@@ -74,6 +74,8 @@ public class Main extends Application {
 
 		Label docLabel = new Label("Highlighted Document");
 		Label completeLabel = new Label("Transfer Completed!");
+		Label location = new Label(System.getProperty("user.dir") + "\\Extracted Text.docx");
+		location.setVisible(false);
 		completeLabel.setVisible(false);
 
 		TextField docField = new TextField();
@@ -94,6 +96,7 @@ public class Main extends Application {
 		start.setOnAction(e -> {
 			if (this.processDocuments(docField.getText())) {
 				completeLabel.setVisible(true);
+				location.setVisible(true);
 			}
 		});
 
@@ -102,6 +105,7 @@ public class Main extends Application {
 		reset.setOnAction(e -> {
 			docField.setText("");
 			completeLabel.setVisible(false);
+			location.setVisible(false);
 		});
 
 		// Create the button box to add the start/reset buttons to
@@ -148,13 +152,15 @@ public class Main extends Application {
 		Label infoLabel = new Label("Brenton Haliw | github.com/bjhaliw");
 		info.getChildren().addAll(infoLabel);
 
-		box.getChildren().addAll(title, msg, msg2, empty, filepathBox, buttonBox, completeLabel, info);
+		box.getChildren().addAll(title, msg, msg2, empty, filepathBox, buttonBox, completeLabel, location, info);
 		Scene scene = new Scene(box);
 
 		primaryStage.setScene(scene);
 		primaryStage.setTitle("Word Transfer Tool");
 		primaryStage.getScene().getRoot().setStyle("-fx-base:gainsboro");
 		primaryStage.show();
+		
+		primaryStage.setOnCloseRequest(e -> System.exit(0));
 	}
 
 	/**
