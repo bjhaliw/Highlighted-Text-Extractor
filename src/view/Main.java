@@ -1,7 +1,5 @@
 package view;
 
-import javafx.geometry.VPos;
-import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 
 import java.io.File;
@@ -13,7 +11,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.apache.poi.hwpf.HWPFDocument;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
@@ -23,22 +20,36 @@ import org.apache.poi.xwpf.usermodel.XWPFRun;
 import javafx.application.Application;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.layout.*;
+import javafx.scene.layout.VBox;
+import javafx.scene.layout.HBox;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontPosture;
 import javafx.scene.text.FontWeight;
-import javafx.stage.*;
-import javafx.scene.control.*;
-import javafx.scene.control.Alert.AlertType;
+import javafx.stage.Stage;
+import javafx.stage.FileChooser;
+import javafx.scene.control.TextField;
+import javafx.scene.control.Label;
+import javafx.scene.control.Button;
 import javafx.scene.input.TransferMode;
 
+/**
+ * This class creates the GUI and contains the method to process the input
+ * document and create the output document containing the extracted highlighted
+ * text.
+ * 
+ * @author Brenton Haliw
+ *
+ */
 @SuppressWarnings("restriction")
 public class Main extends Application {
 
+	/**
+	 * Creates the GUI for the Highlighted Text Extractor tool
+	 */
 	@Override
-	public void start(Stage primaryStage) throws Exception {
+	public void start(Stage primaryStage) {
 		VBox box = new VBox(10);
-		box.setPadding(new Insets(30, 10, 20, 10));
+		box.setPadding(new Insets(30, 10, 5, 10));
 		box.setAlignment(Pos.CENTER);
 
 		// So the window doesn't auto select the first item
@@ -52,7 +63,7 @@ public class Main extends Application {
 		title.setStyle("-fx-underline: true ;");
 
 		Label msg = new Label(
-				"Drag and drop your Word Document into this window or use the button to select its filepath.");
+				"Drag and drop your Word Document (.docx) into this window or use the button to select its filepath.");
 		Label msg2 = new Label(
 				"A new document named \"Extracted Text\" will be created and placed where this tool is located.");
 		msg.setAlignment(Pos.CENTER);
@@ -67,19 +78,22 @@ public class Main extends Application {
 		TextField docField = new TextField();
 		docField.setPromptText("File Path of Highlighted Document");
 		docField.setPrefWidth(300);
+		docField.setEditable(false);
 
 		Button docButton = new Button("Select Document");
 		docButton.setOnAction(e -> {
 			docField.setText(launchFileChooser());
 		});
 
+		// Adding the document nodes to the file path box
 		filepathBox.getChildren().addAll(docLabel, docField, docButton);
 
 		Button start = new Button("Start");
 		start.setPrefWidth(100);
 		start.setOnAction(e -> {
-			this.processDocuments(docField.getText());
-			completeLabel.setVisible(true);
+			if (this.processDocuments(docField.getText())) {
+				completeLabel.setVisible(true);
+			}
 		});
 
 		Button reset = new Button("Reset");
@@ -89,12 +103,11 @@ public class Main extends Application {
 			completeLabel.setVisible(false);
 		});
 
+		// Create the button box to add the start/reset buttons to
 		HBox buttonBox = new HBox(20);
 		buttonBox.setAlignment(Pos.BASELINE_CENTER);
 		buttonBox.getChildren().addAll(start, reset);
 		buttonBox.setMaxWidth(Double.MAX_VALUE);
-
-		box.getChildren().addAll(title, msg, msg2, empty, filepathBox, buttonBox, completeLabel);
 
 		// Extensions that are valid to be drag-n-dropped
 		List<String> validExtensions = Arrays.asList("doc", "docx");
@@ -128,6 +141,13 @@ public class Main extends Application {
 			event.consume();
 		});
 
+		// This box contains information about the author and his github account
+		HBox info = new HBox();
+		info.setAlignment(Pos.CENTER_RIGHT);
+		Label infoLabel = new Label("Brenton Haliw | github.com/bjhaliw");
+		info.getChildren().addAll(infoLabel);
+
+		box.getChildren().addAll(title, msg, msg2, empty, filepathBox, buttonBox, completeLabel, info);
 		Scene scene = new Scene(box);
 
 		primaryStage.setScene(scene);
@@ -136,7 +156,12 @@ public class Main extends Application {
 		primaryStage.show();
 	}
 
-	// Method to to get extension of a file
+	/**
+	 * Helper method to that returns the file extension name
+	 * 
+	 * @param fileName
+	 * @return
+	 */
 	private String getExtension(String fileName) {
 		String extension = "";
 
@@ -157,8 +182,7 @@ public class Main extends Application {
 		chooser.setTitle("Select Microsoft Word Document");
 		stage.setAlwaysOnTop(true);
 
-		FileChooser.ExtensionFilter extFilter = new FileChooser.ExtensionFilter("Microsoft Word Document", "*.docx",
-				"*.doc");
+		FileChooser.ExtensionFilter extFilter = new FileChooser.ExtensionFilter("Microsoft Word Document", "*.docx");
 
 		chooser.getExtensionFilters().add(extFilter);
 		File file = chooser.showOpenDialog(stage);
@@ -172,55 +196,76 @@ public class Main extends Application {
 
 	}
 
+	/**
+	 * This method is responsible for parsing the input Microsoft Word document and
+	 * extracting the highlighted text. A new Microsoft Word document named
+	 * "Extracted Text.docx" will be created and will contain the extracted text,
+	 * keeping its original format (font size, font style, etc)
+	 * 
+	 * @param inputPath - String representation of the input document's path
+	 * @return - true if successfully parsed and created a new document, false if
+	 *         otherwise
+	 */
 	private boolean processDocuments(String inputPath) {
 
-		if (inputPath == null || inputPath.equals("") || !inputPath.contains(".doc") || !inputPath.contains(".docx")) {
+		// Making sure we have a valid path for the input document
+		if (inputPath == null || inputPath.equals("") || !getExtension(inputPath).equals("docx")) {
 			Alerts.invalidDocuments();
 			return false;
 		}
 
+		// Making sure we're not using the designated output document
 		if (inputPath.equals(System.getProperty("user.dir") + "\\Extracted Text.docx")) {
 			Alerts.cannotExtractSelf();
 			return false;
 		}
 
 		try {
+			// Opening and creating the input document
 			FileInputStream fis = new FileInputStream(inputPath);
-			FileOutputStream fos = new FileOutputStream(System.getProperty("user.dir") + "\\Extracted Text.docx");
 			XWPFDocument inDoc = new XWPFDocument(OPCPackage.open(fis));
 
+			// Opening and creating the output document
+			FileOutputStream fos = new FileOutputStream(System.getProperty("user.dir") + "\\Extracted Text.docx");
 			XWPFDocument outDoc = new XWPFDocument();
 			XWPFParagraph outDocParagraph;
 			XWPFRun outDocRun;
 
+			// Getting all of the paragraphs in the input document
 			List<XWPFParagraph> paragraphList = inDoc.getParagraphs();
 
+			// Looping through each paragraph in the input document
 			for (XWPFParagraph paragraph : paragraphList) {
-
+				// Looping through the individual runs inside the current paragraph of the input
+				// document
 				for (XWPFRun rn : paragraph.getRuns()) {
-					System.out.println(rn.toString());
-					System.out.println(rn.isHighlighted());
-
+					// If the current run is highlighted, then we want to extract it to the output
+					// document
 					if (rn.isHighlighted()) {
-						System.out.println("Adding to new document");
+						// Create a new paragraph and a new run in the output document
 						outDocParagraph = outDoc.createParagraph();
 						outDocRun = outDocParagraph.createRun();
+
+						// Make the output run have the same format as the input run
+						outDocRun.setBold(rn.isBold());
+						outDocRun.setUnderline(rn.getUnderline());
+						outDocRun.setStrikeThrough(rn.isStrikeThrough());
 						outDocRun.setTextHighlightColor(rn.getTextHightlightColor().toString());
 						outDocRun.setItalic(rn.isItalic());
 						outDocRun.setStyle(rn.getStyle());
 						outDocRun.setFontFamily(rn.getFontFamily());
 						outDocRun.setColor(rn.getColor());
-						if (rn.getFontSize() != -1) {
+						if (rn.getFontSize() != -1) { // Font size is -1 sometimes which is weird
 							outDocRun.setFontSize(rn.getFontSize());
 						}
 						outDocRun.setText(rn.toString());
-						System.out.println("Font size is: " + rn.getFontSize());
 					}
 				}
-
-				System.out.println("********************************************************************");
 			}
+			// Write the output document to the specified file path
 			outDoc.write(fos);
+
+			// Close everything
 			outDoc.close();
 			fos.close();
 			fis.close();
@@ -228,100 +273,29 @@ public class Main extends Application {
 		} catch (FileNotFoundException ex) {
 			System.out.println("The message is: " + ex.getMessage());
 			ex.printStackTrace();
+
+			// If the Extracted Text document is currently opened
 			if (ex.getMessage()
 					.contains("(The process cannot access the file because it is being used by another process)")) {
 				Alerts.documentAlreadyOpened();
-				return false;
 			}
-			
+
+			// If the file was selected and then moved later
 			if (ex.getMessage().contains("(The system cannot find the file specified)")) {
 				Alerts.cannotFindFile();
-				return false;
 			}
-			
+
+			// If the path was selected and then moved later
 			if (ex.getMessage().contains("(The system cannot find the path specified)")) {
-				Alerts.cannotFindFile();
-				return false;
+				Alerts.cannotFindPath();
 			}
 
-		} catch (IOException e) {
-			e.printStackTrace();
-			if (e.getMessage().contains("(The system cannot find the file specified)")) {
-				Alerts.cannotFindFile();
-				return false;
-			}
-		} catch (InvalidFormatException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 			return false;
-		} 
-
-		return true;
-	}
-
-	private void processDocFile(FileInputStream fis) {
-		try {
-			HWPFDocument doc = new HWPFDocument(fis);
 
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
-
-	private boolean processDocxFile(FileInputStream fis, FileOutputStream fos) {
-		try {
-			XWPFDocument inDoc = new XWPFDocument(OPCPackage.open(fis));
-			XWPFDocument outDoc = new XWPFDocument();
-			XWPFParagraph outDocParagraph;
-			XWPFRun outDocRun;
-
-			List<XWPFParagraph> paragraphList = inDoc.getParagraphs();
-
-			for (XWPFParagraph paragraph : paragraphList) {
-
-				for (XWPFRun rn : paragraph.getRuns()) {
-					System.out.println(rn.toString());
-					System.out.println(rn.isHighlighted());
-
-					if (rn.isHighlighted()) {
-						System.out.println("Adding to new document");
-						outDocParagraph = outDoc.createParagraph();
-						outDocRun = outDocParagraph.createRun();
-						outDocRun.setTextHighlightColor(rn.getTextHightlightColor().toString());
-						outDocRun.setItalic(rn.isItalic());
-						outDocRun.setStyle(rn.getStyle());
-						outDocRun.setFontFamily(rn.getFontFamily());
-						outDocRun.setColor(rn.getColor());
-						if (rn.getFontSize() != -1) {
-							outDocRun.setFontSize(rn.getFontSize());
-						}
-						outDocRun.setText(rn.toString());
-						System.out.println("Font size is: " + rn.getFontSize());
-					}
-				}
-
-				System.out.println("********************************************************************");
-			}
-			outDoc.write(fos);
-			outDoc.close();
-			fos.close();
-			fis.close();
-			inDoc.close();
-		} catch (FileNotFoundException ex) {
-			ex.printStackTrace();
-			if (ex.getMessage()
-					.contains("(The process cannot access the file because it is being used by another process)")) {
-				Alerts.documentAlreadyOpened();
-				return false;
-			}
-
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 			return false;
 		} catch (InvalidFormatException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 			return false;
 		}
@@ -329,6 +303,11 @@ public class Main extends Application {
 		return true;
 	}
 
+	/**
+	 * Launch the program
+	 * 
+	 * @param args
+	 */
 	public static void main(String[] args) {
 		launch(args);
 	}
