@@ -11,6 +11,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.apache.poi.EmptyFileException;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
@@ -236,30 +237,43 @@ public class Main extends Application {
 
 			// Looping through each paragraph in the input document
 			for (XWPFParagraph paragraph : paragraphList) {
-				// Looping through the individual runs inside the current paragraph of the input
-				// document
-				for (XWPFRun rn : paragraph.getRuns()) {
-					// If the current run is highlighted, then we want to extract it to the output
-					// document
-					if (rn.isHighlighted()) {
-						// Create a new paragraph and a new run in the output document
-						outDocParagraph = outDoc.createParagraph();
-						outDocRun = outDocParagraph.createRun();
 
-						// Make the output run have the same format as the input run
-						outDocRun.setBold(rn.isBold());
-						outDocRun.setUnderline(rn.getUnderline());
-						outDocRun.setStrikeThrough(rn.isStrikeThrough());
-						outDocRun.setTextHighlightColor(rn.getTextHightlightColor().toString());
-						outDocRun.setItalic(rn.isItalic());
-						outDocRun.setStyle(rn.getStyle());
-						outDocRun.setFontFamily(rn.getFontFamily());
-						outDocRun.setColor(rn.getColor());
-						if (rn.getFontSize() != -1) { // Font size is -1 sometimes which is weird
-							outDocRun.setFontSize(rn.getFontSize());
+				// Making sure the current paragraph isn't empty
+				if (!paragraph.isEmpty()) {
+					outDocParagraph = outDoc.createParagraph();
+
+					// Looping through the individual runs inside the current paragraph of the input
+					// document
+					for (XWPFRun rn : paragraph.getRuns()) {
+						// If the current run is highlighted, then we want to extract it to the output
+						// document
+						if (rn.isHighlighted()) {
+							// Create a new paragraph and a new run in the output document
+							outDocRun = outDocParagraph.createRun();
+
+							// Make the output run have the same format as the input run
+							outDocRun.setBold(rn.isBold());
+							outDocRun.setUnderline(rn.getUnderline());
+							outDocRun.setStrikeThrough(rn.isStrikeThrough());
+							outDocRun.setTextHighlightColor(rn.getTextHightlightColor().toString());
+							outDocRun.setItalic(rn.isItalic());
+							outDocRun.setStyle(rn.getStyle());
+							outDocRun.setFontFamily(rn.getFontFamily());
+							outDocRun.setColor(rn.getColor());
+							if (rn.getFontSize() != -1) { // Font size is -1 sometimes which is weird
+								outDocRun.setFontSize(rn.getFontSize());
+							}
+							outDocRun.setText(rn.toString() + " ");
 						}
-						outDocRun.setText(rn.toString());
 					}
+					
+					System.out.println("Text is: " + outDocParagraph.getText());
+				}
+			}
+
+			for (int i = outDoc.getParagraphs().size() - 1; i >= 0 ; i--) {
+				if (outDoc.getParagraphs().get(i).getText().equals("")) {
+					outDoc.removeBodyElement(i);
 				}
 			}
 			// Write the output document to the specified file path
@@ -297,6 +311,10 @@ public class Main extends Application {
 			return false;
 		} catch (InvalidFormatException e) {
 			e.printStackTrace();
+			return false;
+		} catch (EmptyFileException e) {
+			e.printStackTrace();
+			Alerts.emptyDocument();
 			return false;
 		}
 

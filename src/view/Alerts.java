@@ -87,4 +87,13 @@ public class Alerts {
 
 		alert.showAndWait();
 	}
+	
+	protected static void emptyDocument() {
+		Alert alert = new Alert(AlertType.INFORMATION, "The provided Microsoft Word Document is empty.\n\n"
+				+ "Please select another Microsoft Word document to be processed.", ButtonType.OK);
+		alert.setTitle("Empty Document");
+		alert.setHeaderText("Input Document is Empty");
+
+		alert.showAndWait();
+	}
 }
